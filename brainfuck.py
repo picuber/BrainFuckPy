@@ -394,6 +394,10 @@ class DefaultDebugMode(DebugMode):
             return ('p', value)
         elif uin[0] == 't':
             self.show_state = not self.show_state
+            if self.show_state:
+                self.outf.write("Now showing the state\n")
+            else:
+                self.outf.write("No longer showin the state\n")
         elif uin[0] == 'r':
             args.outf.flush()
             args.debugout.flush()
