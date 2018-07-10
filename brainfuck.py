@@ -350,7 +350,7 @@ class DefaultDebugMode(DebugMode):
             return ('s', 0)
         elif uin[0] == 'i':
             try:
-                value = int(''.join(uin[1:]))
+                value = int(uin[1:])
             except ValueError:
                 value = 10
             value = max(value, 2)
@@ -360,7 +360,7 @@ class DefaultDebugMode(DebugMode):
             return ('s', 0)
         elif uin[0] == 'I':
             try:
-                value = int(''.join(uin[1:]))
+                value = int(uin[1:])
             except ValueError:
                 value = 10
             value = max(value, 2)
@@ -371,17 +371,19 @@ class DefaultDebugMode(DebugMode):
             return ('s', 0)
         elif uin[0] == 's':
             try:
-                return ('s', int(''.join(uin[1:])))
+                return ('s', int(uin[1:]))
             except ValueError:
                 pass
             return ('s', 1)
         elif uin[0] == 'p':
-            tail = uin[1:]
+            tail = uin[1:].strip()
             if len(tail) > 0 and tail[0] == '$':
                 return('p', len(self.bf._program))
             try:
                 value = int(tail)
             except ValueError:
+                self.outf.write("Argument for command p has to be an integer "
+                                "in base 10 or $\n")
                 return ('s', 0)
             return ('p', value)
         elif uin[0] == 'r':
@@ -489,7 +491,6 @@ class BrainFuck:
     def get_program_from_stdin():
         """prompts the user to input the program on stdin, since it was not
         given via a file or as a command line argument string.
-
         :returns: the program read from stdin
         """
         try:
