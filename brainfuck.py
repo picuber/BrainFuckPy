@@ -13,8 +13,9 @@ unicode characters, int-mode prints them as integers
 
 Exit codes:
     0: exited without errors
-    -1: loop brackets are not balanced
+    -1: invalid code (loop brackets are not balanced)
     -2: read unexpected EOF
+    -3: KeyboardInterrupt
 """
 
 import sys
@@ -467,9 +468,18 @@ class BrainFuck:
         _debug_mode handles the debugger
         """
         if program is None:
-            program = ""
-            for l in sys.stdin:
-                program += l.strip()
+            try:
+                print("Please enter the brainfuck program below. When done, "
+                      "hit Ctrl-d on an empty line.", file=sys.stderr)
+                print("prog> ", end='', file=sys.stderr, flush=True)
+                program = ""
+                for l in sys.stdin:
+                    print("prog> ", end='', file=sys.stderr, flush=True)
+                    program += l.strip()
+            except KeyboardInterrupt:
+                print("\nERROR: Caught KeyboardInterrupt. Exiting...",
+                      file=sys.stderr, flush=True)
+                exit(-3)
         program = self.sanitize(program)
         self.check_valid(program)
 
