@@ -273,6 +273,7 @@ class DefaultDebugMode(DebugMode):
                  if n < 2 then n will be set to 2
                  if n > 36 then n will be set to 36
     C:       print in chars
+    ENTER:   step 1 time
     s <n>:   step n times (default: 1)
     p <n>:   step until program pointer is at position n
     p $;     step until the end of the program (without exiting the debugger)
@@ -300,14 +301,14 @@ class DefaultDebugMode(DebugMode):
 
     def _print_state(self):
         self.outf.write("state: "
-                        + str(self.bf._band.lband[self.band_left::-1]) + " >>>"
-                        + str(self.bf._band.rband[0:1]) + "<<< "
+                        + str(self.bf._band.lband[self.band_left - 1::-1])
+                        + " >>>" + str(self.bf._band.rband[0:1]) + "<<< "
                         + str(self.bf._band.rband[1:self.band_right + 1])
                         + '\n')
         i = self.bf._pointer
         self.outf.write("state: "
-                        + self.bf._program[max(0, i - self.prog_left):i] + " ("
-                        + self.bf._program[i:i + 1] + ") "
+                        + self.bf._program[max(0, i - self.prog_left):i]
+                        + " (" + self.bf._program[i:i + 1] + ") "
                         + self.bf._program[i+1:i + self.prog_right + 1]
                         + '\n')
         self.outf.write("state: program pointer = "
@@ -319,6 +320,25 @@ class DefaultDebugMode(DebugMode):
         self.outf.flush()
         pass
 
+    def get_int(self, string, default=None, error_message=""):
+        """parse an integer from the string.
+        If it fails print the error_message and return None.
+        If none is given return the default value
+        (could be None if default is not set).
+
+        :string: (str) the string to parse from
+        :default: (int) the usual default value
+        :error_message: (str) an error message, in case parsing fails
+        :returns: (int) the parsed int, the default value or None
+
+        """
+        try:
+            return int(string)
+        except ValueError:
+            if error_message:
+                self.outf.write(error_message)
+            return default
+
     def debug(self, end=False):
         """handles the debugger console
 
@@ -328,25 +348,6 @@ class DefaultDebugMode(DebugMode):
             p: run unitil position, [1]: position
 
         """
-
-        def get_int(self, string, default=None, error_message=""):
-            """parse an integer from the string.
-            If it fails print the error_message and return None.
-            If none is given return the default value
-            (could be None if default is not set).
-
-            :string: (str) the string to parse from
-            :default: (int) the usual default value
-            :error_message: (str) an error message, in case parsing fails
-            :returns: (int) the parsed int, the default value or None
-
-            """
-            try:
-                int(string)
-            except ValueError:
-                if error_message:
-                    self.outf.write(error_message)
-                return default
 
         if self.show_state:
             self._print_state()
@@ -367,7 +368,7 @@ class DefaultDebugMode(DebugMode):
             self.outf.write(self._DBUGGER_HELP_MESSAGE)
             return ('s', 0)
         elif uin[0] == 'i':
-            value = get_int(uin[1:], default=10)
+            value = self.get_int(uin[1:], default=10)
             value = max(value, 2)
             value = min(value, 36)
             if self.bf.set_read_mode(IntBaseReadMode(value, args.inf)):
@@ -378,7 +379,7 @@ class DefaultDebugMode(DebugMode):
                 self.outf.write(self.bf._read_mode.change_message)
             return ('s', 0)
         elif uin[0] == 'I':
-            value = get_int(uin[1:], default=10)
+            value = self.get_int(uin[1:], default=10)
             value = max(value, 2)
             if value > 36:
                 value = 64
@@ -390,14 +391,14 @@ class DefaultDebugMode(DebugMode):
                 self.outf.write(self.bf._print_mode.change_message)
             return ('s', 0)
         elif uin[0] == 's':
-            return ('s', get_int(uin[1:], default=1))
+            return ('s', self.get_int(uin[1:], default=1))
         elif uin[0] == 'p':
             tail = uin[1:].strip()
             if len(tail) > 0 and tail[0] == '$':
                 return('p', len(self.bf._program))
-            value = get_int(tail,
-                            error_message="Argument for command p has to be an"
-                                          " integer in base 10 or $\n")
+            value = self.get_int(tail, error_message="Argument for command p "
+                                                     "has to be an integer in "
+                                                     "base 10 or $\n")
             if value is None:
                 return ('s', 0)
             else:
@@ -408,22 +409,27 @@ class DefaultDebugMode(DebugMode):
                 self.outf.write("Now showing the state\n")
             else:
                 self.outf.write("No longer showin the state\n")
+            return ('s', 0)
         elif uin[0] == '>':
-            self.state_band_right = get_int(uin[1:], default=25)
-            self.outf.write("Now showing " + str(self.state_band_right)
+            self.band_right = self.get_int(uin[1:], default=25)
+            self.outf.write("Now showing up to " + str(self.band_right)
                             + " cells to the right\n")
+            return ('s', 0)
         elif uin[0] == '<':
-            self.state_band_left = get_int(uin[1:], default=25)
-            self.outf.write("Now showing " + str(self.state_band_left)
+            self.band_left = self.get_int(uin[1:], default=25)
+            self.outf.write("Now showing up to " + str(self.band_left)
                             + " cells to the left\n")
+            return ('s', 0)
         elif uin[0] == ')':
-            self.state_prog_right = get_int(uin[1:], default=25)
-            self.outf.write("Now showing " + str(self.state_prog_right)
+            self.prog_right = self.get_int(uin[1:], default=25)
+            self.outf.write("Now showing up to " + str(self.prog_right)
                             + " characters to the right\n")
+            return ('s', 0)
         elif uin[0] == '(':
-            self.state_prog_left = get_int(uin[1:], default=25)
-            self.outf.write("Now showing " + str(self.state_prog_left)
+            self.prog_left = self.get_int(uin[1:], default=25)
+            self.outf.write("Now showing up to " + str(self.prog_left)
                             + " characters to the left\n")
+            return ('s', 0)
         elif uin[0] == 'r':
             args.outf.flush()
             args.debugout.flush()
