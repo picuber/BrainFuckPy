@@ -275,6 +275,7 @@ class DefaultDebugMode(DebugMode):
     C:       print in chars
     s <n>:   step n times (default: 1)
     p <n>:   step until program pointer is at position n
+    p $;     step until the end of the program (without exiting the debugger)
     r:       reset execution
     e:       exit debugger
     q:       exit\n"""
@@ -375,8 +376,11 @@ class DefaultDebugMode(DebugMode):
                 pass
             return ('s', 1)
         elif uin[0] == 'p':
+            tail = uin[1:]
+            if len(tail) > 0 and tail[0] == '$':
+                return('p', len(self.bf._program))
             try:
-                value = int(''.join(uin[1:]))
+                value = int(tail)
             except ValueError:
                 return ('s', 0)
             return ('p', value)
