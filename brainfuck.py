@@ -328,6 +328,26 @@ class DefaultDebugMode(DebugMode):
             p: run unitil position, [1]: position
 
         """
+
+        def get_int(self, string, default=None, error_message=""):
+            """parse an integer from the string.
+            If it fails print the error_message and return None.
+            If none is given return the default value
+            (could be None if default is not set).
+
+            :string: (str) the string to parse from
+            :default: (int) the usual default value
+            :error_message: (str) an error message, in case parsing fails
+            :returns: (int) the parsed int, the default value or None
+
+            """
+            try:
+                int(string)
+            except ValueError:
+                if error_message:
+                    self.outf.write(error_message)
+                return default
+
         if self.show_state:
             self._print_state()
 
@@ -347,10 +367,7 @@ class DefaultDebugMode(DebugMode):
             self.outf.write(self._DBUGGER_HELP_MESSAGE)
             return ('s', 0)
         elif uin[0] == 'i':
-            try:
-                value = int(uin[1:])
-            except ValueError:
-                value = 10
+            value = get_int(uin[1:], default=10)
             value = max(value, 2)
             value = min(value, 36)
             if self.bf.set_read_mode(IntBaseReadMode(value, args.inf)):
@@ -361,10 +378,7 @@ class DefaultDebugMode(DebugMode):
                 self.outf.write(self.bf._read_mode.change_message)
             return ('s', 0)
         elif uin[0] == 'I':
-            try:
-                value = int(uin[1:])
-            except ValueError:
-                value = 10
+            value = get_int(uin[1:], default=10)
             value = max(value, 2)
             if value > 36:
                 value = 64
@@ -376,28 +390,40 @@ class DefaultDebugMode(DebugMode):
                 self.outf.write(self.bf._print_mode.change_message)
             return ('s', 0)
         elif uin[0] == 's':
-            try:
-                return ('s', int(uin[1:]))
-            except ValueError:
-                pass
-            return ('s', 1)
+            return ('s', get_int(uin[1:], default=1))
         elif uin[0] == 'p':
             tail = uin[1:].strip()
             if len(tail) > 0 and tail[0] == '$':
                 return('p', len(self.bf._program))
-            try:
-                value = int(tail)
-            except ValueError:
-                self.outf.write("Argument for command p has to be an integer "
-                                "in base 10 or $\n")
+            value = get_int(tail,
+                            error_message="Argument for command p has to be an"
+                                          " integer in base 10 or $\n")
+            if value is None:
                 return ('s', 0)
-            return ('p', value)
+            else:
+                return ('p', value)
         elif uin[0] == 't':
             self.show_state = not self.show_state
             if self.show_state:
                 self.outf.write("Now showing the state\n")
             else:
                 self.outf.write("No longer showin the state\n")
+        elif uin[0] == '>':
+            self.state_band_right = get_int(uin[1:], default=25)
+            self.outf.write("Now showing " + str(self.state_band_right)
+                            + " cells to the right\n")
+        elif uin[0] == '<':
+            self.state_band_left = get_int(uin[1:], default=25)
+            self.outf.write("Now showing " + str(self.state_band_left)
+                            + " cells to the left\n")
+        elif uin[0] == ')':
+            self.state_prog_right = get_int(uin[1:], default=25)
+            self.outf.write("Now showing " + str(self.state_prog_right)
+                            + " characters to the right\n")
+        elif uin[0] == '(':
+            self.state_prog_left = get_int(uin[1:], default=25)
+            self.outf.write("Now showing " + str(self.state_prog_left)
+                            + " characters to the left\n")
         elif uin[0] == 'r':
             args.outf.flush()
             args.debugout.flush()
