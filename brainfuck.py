@@ -472,18 +472,7 @@ class BrainFuck:
         _debug_mode handles the debugger
         """
         if program is None:
-            try:
-                print("Please enter the brainfuck program below. When done, "
-                      "hit Ctrl-d on an empty line.", file=sys.stderr)
-                print("prog> ", end='', file=sys.stderr, flush=True)
-                program = ""
-                for l in sys.stdin:
-                    print("prog> ", end='', file=sys.stderr, flush=True)
-                    program += l.strip()
-            except KeyboardInterrupt:
-                print("\nERROR: Caught KeyboardInterrupt. Exiting...",
-                      file=sys.stderr, flush=True)
-                exit(-3)
+            program = self.get_program_from_stdin()
         program = self.sanitize(program)
         self.check_valid(program)
 
@@ -495,6 +484,28 @@ class BrainFuck:
         self._print_mode = print_mode
         self._read_mode = read_mode
         self._debug_mode = DebugMode(self) if not debug_mode else debug_mode
+
+    @staticmethod
+    def get_program_from_stdin():
+        """prompts the user to input the program on stdin, since it was not
+        given via a file or as a command line argument string.
+
+        :returns: the program read from stdin
+        """
+        try:
+            print("Please enter the brainfuck program below. When done, "
+                  "hit Ctrl-d on an empty line.", file=sys.stderr)
+            print("prog> ", end='', file=sys.stderr, flush=True)
+            program = ""
+            for l in sys.stdin:
+                print("prog> ", end='', file=sys.stderr, flush=True)
+                program += l.strip()
+            print("\n", file=sys.stderr, flush=True)
+            return program
+        except KeyboardInterrupt:
+            print("\nERROR: Caught KeyboardInterrupt. Exiting...",
+                  file=sys.stderr, flush=True)
+            exit(-3)
 
     @classmethod
     def sanitize(cls, program):
