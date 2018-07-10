@@ -276,6 +276,11 @@ class DefaultDebugMode(DebugMode):
     s <n>:   step n times (default: 1)
     p <n>:   step until program pointer is at position n
     p $;     step until the end of the program (without exiting the debugger)
+    t:       toggle show state
+    > <n>:   set until how far the band is shown to the right (default: 25)
+    < <n>:   set until how far the band is shown to the left (default: 25)
+    ) <n>:   set until how far the program is shown to the right (default: 25)
+    ( <n>:   set until how far the program is shown to the left (default: 25)
     r:       reset execution
     e:       exit debugger
     q:       exit\n"""
@@ -287,16 +292,23 @@ class DefaultDebugMode(DebugMode):
         """
         super().__init__(bf, inf, outf)
         self.args = args
+        self.show_state = True
+        self.band_left = 25
+        self.band_right = 25
+        self.prog_left = 25
+        self.prog_right = 25
 
     def _print_state(self):
-        self.outf.write("state: " + str(self.bf._band.lband[25::-1]) + " >>>"
+        self.outf.write("state: "
+                        + str(self.bf._band.lband[self.band_left::-1]) + " >>>"
                         + str(self.bf._band.rband[0:1]) + "<<< "
-                        + str(self.bf._band.rband[1:26])
+                        + str(self.bf._band.rband[1:self.band_right + 1])
                         + '\n')
         i = self.bf._pointer
-        self.outf.write("state: " + self.bf._program[max(0, i-25):i] + " ("
-                        + self.bf._program[i:i+1] + ") "
-                        + self.bf._program[i+1:i+26]
+        self.outf.write("state: "
+                        + self.bf._program[max(0, i - self.prog_left):i] + " ("
+                        + self.bf._program[i:i + 1] + ") "
+                        + self.bf._program[i+1:i + self.prog_right + 1]
                         + '\n')
         self.outf.write("state: program pointer = "
                         + str(self.bf._pointer)
@@ -316,7 +328,8 @@ class DefaultDebugMode(DebugMode):
             p: run unitil position, [1]: position
 
         """
-        self._print_state()
+        if self.show_state:
+            self._print_state()
 
         if self.inf is sys.stdin:
             print("debug> ", end='', file=sys.stderr, flush=True)
@@ -333,21 +346,6 @@ class DefaultDebugMode(DebugMode):
         elif uin[0] == '?' or uin[0] == 'h':
             self.outf.write(self._DBUGGER_HELP_MESSAGE)
             return ('s', 0)
-        elif uin[0] == 'e':
-            if self.bf.set_debug_mode(DebugMode(self.bf)):
-                self.outf.write(self.bf._debug_mode.change_message)
-            return ('s', 0)
-        elif uin[0] == 'q':
-            self.outf.write("Exiting...")
-            exit(0)
-        elif uin[0] == 'c':
-            if self.bf.set_read_mode(CharReadMode(args.inf)):
-                self.outf.write(self.bf._read_mode.change_message)
-            return ('s', 0)
-        elif uin[0] == 'C':
-            if self.bf.set_print_mode(CharPrintMode(args.outf)):
-                self.outf.write(self.bf._print_mode.change_message)
-            return ('s', 0)
         elif uin[0] == 'i':
             try:
                 value = int(uin[1:])
@@ -356,6 +354,10 @@ class DefaultDebugMode(DebugMode):
             value = max(value, 2)
             value = min(value, 36)
             if self.bf.set_read_mode(IntBaseReadMode(value, args.inf)):
+                self.outf.write(self.bf._read_mode.change_message)
+            return ('s', 0)
+        elif uin[0] == 'c':
+            if self.bf.set_read_mode(CharReadMode(args.inf)):
                 self.outf.write(self.bf._read_mode.change_message)
             return ('s', 0)
         elif uin[0] == 'I':
@@ -367,6 +369,10 @@ class DefaultDebugMode(DebugMode):
             if value > 36:
                 value = 64
             if self.bf.set_print_mode(IntBasePrintMode(value, args.outf)):
+                self.outf.write(self.bf._print_mode.change_message)
+            return ('s', 0)
+        elif uin[0] == 'C':
+            if self.bf.set_print_mode(CharPrintMode(args.outf)):
                 self.outf.write(self.bf._print_mode.change_message)
             return ('s', 0)
         elif uin[0] == 's':
@@ -386,10 +392,19 @@ class DefaultDebugMode(DebugMode):
                                 "in base 10 or $\n")
                 return ('s', 0)
             return ('p', value)
+        elif uin[0] == 't':
+            self.show_state = not self.show_state
         elif uin[0] == 'r':
             args.outf.flush()
             args.debugout.flush()
             return ('r')
+        elif uin[0] == 'e':
+            if self.bf.set_debug_mode(DebugMode(self.bf)):
+                self.outf.write(self.bf._debug_mode.change_message)
+            return ('s', 0)
+        elif uin[0] == 'q':
+            self.outf.write("Exiting...")
+            exit(0)
         else:
             self.outf.write("Not a recognized command\n")
             return ('s', 0)
